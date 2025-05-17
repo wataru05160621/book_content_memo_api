@@ -1,5 +1,10 @@
 import axios from 'axios';
 
+// テスト用の関数を追加
+export const sum = (a: number, b: number): number => {
+  return a + b;
+};
+
 const baseURL = 'http://localhost:3000';
 
 interface HealthCheckResponse {

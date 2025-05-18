@@ -6,6 +6,14 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+
   // Vercel環境での設定
   if (process.env.VERCEL) {
     app.enableCors();
@@ -16,9 +24,6 @@ async function bootstrap() {
       credentials: true,
     });
   }
-
-  // バリデーションパイプの設定
-  app.useGlobalPipes(new ValidationPipe());
 
   // Swagger設定
   const config = new DocumentBuilder()

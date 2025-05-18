@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { SupabaseModule } from './supabase/supabase.module';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { HealthService } from './health/health.service';
       isGlobal: true,
     }),
     SupabaseModule,
+    AuthModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],

@@ -1,17 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { InjectSupabaseClient } from '../supabase/supabase.decorator';
-
-interface HealthCheckResponse {
-  status: 'ok' | 'error';
-  message: string;
-}
+import { DatabasePingResult, HealthCheckResponse } from './types/health.types';
 
 @Injectable()
 export class HealthService {
   constructor(
     @InjectSupabaseClient() private readonly supabase: SupabaseClient,
   ) {}
+
+  async check(): Promise<HealthCheckResponse> {
+    return {
+      status: 'ok',
+      message: 'Service is healthy',
+    };
+  }
 
   async checkAll(): Promise<{
     status: 'ok' | 'error';
@@ -37,15 +40,73 @@ export class HealthService {
   }
 
   async checkDatabase(): Promise<HealthCheckResponse> {
+    const startTime = performance.now();
     try {
-      const { error } = await this.supabase.rpc('health_check');
+      // ヘルスチェックテーブルの確認
+      const { error: tableError } = await this.supabase
+        .from('_health_check')
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (tableError && tableError.code !== 'PGRST116') {
+        console.error('Health check table error:', tableError);
+        return {
+          status: 'error',
+          message: `データベース接続エラー: ${tableError.message}`,
+          timestamp: new Date().toISOString(),
+          details: {
+            latency: performance.now() - startTime,
+          },
+        };
+      }
+
+      // ping関数で接続テスト
+      const { data: pingResult, error: pingError } = await this.supabase
+        .rpc('ping')
+        .single<DatabasePingResult>();
+
+      if (pingError) {
+        console.error('Database ping error:', pingError);
+        return {
+          status: 'error',
+          message: `データベース接続テストに失敗: ${pingError.message}`,
+          timestamp: new Date().toISOString(),
+          details: {
+            latency: performance.now() - startTime,
+          },
+        };
+      }
+
+      // pingResultの型チェックと変換
+      if (pingResult && 'status' in pingResult) {
+        return {
+          status: pingResult.status ? 'ok' : 'error',
+          message: 'データベース接続は正常です',
+          timestamp: new Date().toISOString(),
+          details: {
+            latency: performance.now() - startTime,
+            dbLatency: pingResult.latency,
+            lastCheck: pingResult.last_check,
+            dbVersion: pingResult.db_version,
+          },
+        };
+      }
+
       return {
-        status: error ? 'error' : 'ok',
-        message: error ? error.message : 'Database connection is healthy',
+        status: 'error',
+        message: 'データベース接続テストに失敗しました',
+        timestamp: new Date().toISOString(),
+        details: {
+          latency: performance.now() - startTime,
+        },
       };
     } catch (error: unknown) {
+      console.error('Unexpected database error:', error);
       const errorMessage =
-        error instanceof Error ? error.message : '不明なエラーが発生しました';
+        error instanceof Error
+          ? error.message
+          : '予期せぬデータベースエラーが発生しました';
       return {
         status: 'error',
         message: errorMessage,

@@ -1,35 +1,33 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsString, MinLength } from 'class-validator';
 
-export class SignUpDto {
-  @ApiProperty({
-    example: 'user@example.com',
-    description: 'ユーザーのメールアドレス',
-  })
-  @IsEmail()
-  email: string;
-
-  @ApiProperty({
-    example: 'password123',
-    description: 'パスワード（8文字以上）',
-  })
-  @IsString()
-  @MinLength(8)
-  password: string;
-}
-
 export class LoginDto {
   @ApiProperty({
     example: 'user@example.com',
     description: 'ユーザーのメールアドレス',
   })
-  @IsEmail()
+  @IsEmail({}, { message: '有効なメールアドレスを入力してください' })
   email: string;
 
   @ApiProperty({
     example: 'password123',
-    description: 'パスワード',
+    description: 'ユーザーのパスワード',
   })
   @IsString()
+  @MinLength(6, { message: 'パスワードは6文字以上である必要があります' })
   password: string;
+}
+
+export class LoginResponseDto {
+  @ApiProperty({
+    example: 'eyJhbGciOiJIUzI1NiIs...',
+    description: 'JWT認証トークン',
+  })
+  access_token: string;
+
+  @ApiProperty({
+    example: 'user@example.com',
+    description: 'ユーザーのメールアドレス',
+  })
+  email: string;
 }
